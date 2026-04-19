@@ -156,6 +156,19 @@
       margin-left: 0.4rem;
       font-weight: 500;
     }
+    .del-btn {
+      background: none;
+      border: none;
+      color: #ddd;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 0.1rem 0.3rem;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .del-btn:hover { color: #c92a2a; background: #fff0f0; }
+
     .empty-state {
       text-align: center;
       color: #ccc;
@@ -182,7 +195,7 @@
   <header>
     <h1>True Weight</h1>
     <p id="today-label"></p>
-    <p class="version">v1.002</p>
+    <p class="version">v1.003</p>
   </header>
 
   <!-- True Weight -->
@@ -234,7 +247,7 @@
 
 <script type="module">
   import { initializeApp }        from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDocs, collection, query, orderBy }
+  import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection, query, orderBy }
                                   from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
   // ── Firebase Config ────────────────────────────────────────────────
@@ -281,6 +294,12 @@
       console.error(err);
       setStatus("Could not load data. Check your Firebase config.", "error");
     }
+    render();
+  }
+
+  async function deleteEntry(date) {
+    await deleteDoc(doc(db, "weights", date));
+    entries = entries.filter(e => e.date !== date);
     render();
   }
 
@@ -423,14 +442,25 @@
         <td>${fmtDate(e.date)}${isT ? '<span class="today-tag">today</span>' : ""}</td>
         <td>${e.weight.toFixed(1)}</td>
         <td>${avg.toFixed(1)}</td>
+        <td><button class="del-btn" data-date="${e.date}" title="Delete">×</button></td>
       </tr>`;
     }).join("");
 
     container.innerHTML = `
       <table class="log-table">
-        <thead><tr><th>Date</th><th>Logged</th><th>Avg (15d)</th></tr></thead>
+        <thead><tr><th>Date</th><th>Logged</th><th>Avg (15d)</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
+
+    container.querySelectorAll(".del-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const date = btn.dataset.date;
+        if (!confirm(`Delete entry for ${fmtDate(date)}?`)) return;
+        btn.disabled = true;
+        try { await deleteEntry(date); }
+        catch (err) { console.error(err); btn.disabled = false; }
+      });
+    });
   }
 
   // ── UI ─────────────────────────────────────────────────────────────
