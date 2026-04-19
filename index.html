@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>True Weight</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 480px; margin: 0 auto; }
+
+    header { margin-bottom: 2rem; }
+    header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { color: #888; font-size: 0.88rem; margin-top: 0.3rem; }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+
+    /* ── True Weight hero ── */
+    .hero-card {
+      background: #1a1a1a;
+      color: white;
+      text-align: center;
+      padding: 2.25rem 1.5rem;
+    }
+    .hero-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      opacity: 0.55;
+    }
+    .hero-value {
+      font-size: 4rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin: 0.4rem 0 0.1rem;
+    }
+    .hero-unit { font-size: 1.4rem; opacity: 0.6; margin-left: 0.2rem; }
+    .hero-trend { font-size: 0.82rem; opacity: 0.6; margin-top: 0.5rem; }
+    .hero-trend.up   { color: #ff8787; opacity: 1; }
+    .hero-trend.down { color: #69db7c; opacity: 1; }
+
+    /* ── Today badge ── */
+    .today-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+    }
+    .today-strip .label { color: #999; }
+    .today-strip .value { font-weight: 600; font-size: 1rem; }
+    .today-strip .not-yet { color: #bbb; font-style: italic; }
+
+    /* ── Log form ── */
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+    .input-group { flex: 1; }
+    .input-group label {
+      display: block;
+      font-size: 0.78rem;
+      color: #888;
+      margin-bottom: 0.4rem;
+      font-weight: 500;
+    }
+    input[type="number"],
+    input[type="date"] {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+      background: white;
+      color: #1a1a1a;
+    }
+    input:focus { border-color: #1a1a1a; }
+
+    button {
+      padding: 0.65rem 1.2rem;
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.82; }
+    button:disabled { opacity: 0.35; cursor: default; }
+
+    .status {
+      font-size: 0.8rem;
+      margin-top: 0.6rem;
+      min-height: 1.2em;
+      color: #999;
+    }
+    .status.success { color: #2f9e44; }
+    .status.error   { color: #c92a2a; }
+
+    /* ── Log table ── */
+    .log-card h2 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #bbb;
+      margin-bottom: 1rem;
+    }
+    .log-table { width: 100%; border-collapse: collapse; }
+    .log-table th {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #ccc;
+      font-weight: 600;
+      text-align: left;
+      padding-bottom: 0.7rem;
+    }
+    .log-table td {
+      padding: 0.55rem 0;
+      font-size: 0.88rem;
+      border-top: 1px solid #f2f2f2;
+      color: #444;
+    }
+    .log-table th:not(:first-child),
+    .log-table td:not(:first-child) { text-align: right; }
+    .log-table .today-row td { font-weight: 700; color: #1a1a1a; }
+    .today-tag {
+      font-size: 0.68rem;
+      background: #f0f0f0;
+      color: #999;
+      border-radius: 4px;
+      padding: 0.1em 0.4em;
+      margin-left: 0.4rem;
+      font-weight: 500;
+    }
+    .empty-state {
+      text-align: center;
+      color: #ccc;
+      font-size: 0.88rem;
+      padding: 2rem 0;
+    }
+    .loading { text-align: center; color: #ccc; padding: 2rem; font-size: 0.88rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>True Weight</h1>
+    <p id="today-label"></p>
+  </header>
+
+  <!-- True Weight -->
+  <div class="card hero-card">
+    <div class="hero-label">True Weight &middot; 15-day average</div>
+    <div>
+      <span class="hero-value" id="tw-value">—</span><span class="hero-unit" id="tw-unit">kg</span>
+    </div>
+    <div class="hero-trend" id="tw-trend">No data yet</div>
+  </div>
+
+  <!-- Today's logged weight -->
+  <div class="card today-strip">
+    <span class="label">Today's logged weight</span>
+    <span id="today-weight" class="not-yet">not logged yet</span>
+  </div>
+
+  <!-- Log form -->
+  <div class="card">
+    <div class="input-row">
+      <div class="input-group">
+        <label>Date</label>
+        <input type="date" id="input-date" />
+      </div>
+      <div class="input-group">
+        <label>Weight (kg)</label>
+        <input type="number" id="input-weight" step="0.1" min="20" max="500" placeholder="75.0" />
+      </div>
+      <button id="log-btn">Log</button>
+    </div>
+    <div class="status" id="status-msg"></div>
+  </div>
+
+  <!-- Entry log -->
+  <div class="card log-card">
+    <h2>Recent Entries</h2>
+    <div id="log-content" class="loading">Loading…</div>
+  </div>
+
+</div>
+
+<script type="module">
+  import { initializeApp }        from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDocs, collection, query, orderBy }
+                                  from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+
+  // ── Firebase Config ────────────────────────────────────────────────
+  // Replace with your project's config from the Firebase console
+  const firebaseConfig = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+  // ──────────────────────────────────────────────────────────────────
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  let entries = []; // [{ date: "YYYY-MM-DD", weight: number }] sorted asc
+
+  // ── Helpers ────────────────────────────────────────────────────────
+
+  function todayISO() {
+    return new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+  }
+
+  function fmtDate(iso) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  function rollingAvg(arr, idx, win = 15) {
+    const slice = arr.slice(Math.max(0, idx - win + 1), idx + 1);
+    return slice.reduce((s, e) => s + e.weight, 0) / slice.length;
+  }
+
+  // ── Firebase ───────────────────────────────────────────────────────
+
+  async function loadEntries() {
+    try {
+      const snap = await getDocs(query(collection(db, "weights"), orderBy("date", "asc")));
+      entries = snap.docs.map(d => ({ date: d.id, weight: Number(d.data().weight) }));
+    } catch (err) {
+      console.error(err);
+      setStatus("Could not load data. Check your Firebase config.", "error");
+    }
+    render();
+  }
+
+  async function saveEntry(date, weight) {
+    await setDoc(doc(db, "weights", date), { date, weight });
+    const i = entries.findIndex(e => e.date === date);
+    if (i >= 0) entries[i].weight = weight;
+    else {
+      entries.push({ date, weight });
+      entries.sort((a, b) => a.date.localeCompare(b.date));
+    }
+    render();
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────
+
+  function render() {
+    const today = todayISO();
+
+    // True Weight
+    const twEl    = document.getElementById("tw-value");
+    const trendEl = document.getElementById("tw-trend");
+    if (entries.length === 0) {
+      twEl.textContent    = "—";
+      trendEl.textContent = "Log your first entry above";
+      trendEl.className   = "hero-trend";
+    } else {
+      const last    = entries.length - 1;
+      const current = rollingAvg(entries, last);
+      twEl.textContent = current.toFixed(1);
+
+      const d7 = new Date(); d7.setDate(d7.getDate() - 7);
+      const d7iso  = d7.toLocaleDateString("en-CA");
+      const prevIdx = [...entries].reverse().findIndex(e => e.date <= d7iso);
+      if (prevIdx >= 0) {
+        const realIdx = entries.length - 1 - prevIdx;
+        const prev    = rollingAvg(entries, realIdx);
+        const diff    = current - prev;
+        const sign    = diff >= 0 ? "+" : "";
+        trendEl.textContent = `${sign}${diff.toFixed(1)} kg vs 7 days ago`;
+        trendEl.className   = "hero-trend " + (diff > 0.05 ? "up" : diff < -0.05 ? "down" : "");
+      } else {
+        trendEl.textContent = `Based on ${Math.min(entries.length, 15)} entr${entries.length === 1 ? "y" : "ies"}`;
+        trendEl.className   = "hero-trend";
+      }
+    }
+
+    // Today strip
+    const todayEntry = entries.find(e => e.date === today);
+    const twSpan     = document.getElementById("today-weight");
+    if (todayEntry) {
+      twSpan.textContent = `${todayEntry.weight.toFixed(1)} kg`;
+      twSpan.className   = "value";
+    } else {
+      twSpan.textContent = "not logged yet";
+      twSpan.className   = "not-yet";
+    }
+
+    // Log table
+    const container = document.getElementById("log-content");
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty-state">No entries yet.</div>';
+      return;
+    }
+    const recent = [...entries].slice(-30).reverse();
+    const rows = recent.map(e => {
+      const gi  = entries.findIndex(x => x.date === e.date);
+      const avg = rollingAvg(entries, gi);
+      const isT = e.date === today;
+      return `<tr class="${isT ? "today-row" : ""}">
+        <td>${fmtDate(e.date)}${isT ? '<span class="today-tag">today</span>' : ""}</td>
+        <td>${e.weight.toFixed(1)}</td>
+        <td>${avg.toFixed(1)}</td>
+      </tr>`;
+    }).join("");
+
+    container.innerHTML = `
+      <table class="log-table">
+        <thead><tr><th>Date</th><th>Logged</th><th>Avg (15d)</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  // ── UI ─────────────────────────────────────────────────────────────
+
+  function setStatus(msg, type = "") {
+    const el = document.getElementById("status-msg");
+    el.textContent = msg;
+    el.className   = "status " + type;
+  }
+
+  // Seed UI defaults
+  document.getElementById("input-date").value = todayISO();
+  document.getElementById("today-label").textContent = new Date().toLocaleDateString("en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric"
+  });
+
+  document.getElementById("log-btn").addEventListener("click", async () => {
+    const date   = document.getElementById("input-date").value;
+    const weight = parseFloat(document.getElementById("input-weight").value);
+    if (!date)                          { setStatus("Pick a date.", "error"); return; }
+    if (!weight || weight < 20 || weight > 500) { setStatus("Enter a valid weight (20–500 kg).", "error"); return; }
+
+    const btn = document.getElementById("log-btn");
+    btn.disabled = true;
+    setStatus("Saving…");
+    try {
+      await saveEntry(date, weight);
+      setStatus("Saved!", "success");
+      document.getElementById("input-weight").value = "";
+      document.getElementById("input-date").value   = todayISO();
+    } catch (err) {
+      setStatus("Save failed. Check your Firebase config.", "error");
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  loadEntries();
+</script>
+</body>
+</html>
