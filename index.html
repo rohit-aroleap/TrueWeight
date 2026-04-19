@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>True Weight</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -162,6 +163,17 @@
       padding: 2rem 0;
     }
     .loading { text-align: center; color: #ccc; padding: 2rem; font-size: 0.88rem; }
+
+    /* ── Chart ── */
+    .chart-card h2 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #bbb;
+      margin-bottom: 1.25rem;
+    }
+    .chart-wrap { position: relative; height: 180px; }
   </style>
 </head>
 <body>
@@ -170,7 +182,7 @@
   <header>
     <h1>True Weight</h1>
     <p id="today-label"></p>
-    <p class="version">v1.001</p>
+    <p class="version">v1.002</p>
   </header>
 
   <!-- True Weight -->
@@ -180,6 +192,14 @@
       <span class="hero-value" id="tw-value">—</span><span class="hero-unit" id="tw-unit">kg</span>
     </div>
     <div class="hero-trend" id="tw-trend">No data yet</div>
+  </div>
+
+  <!-- True Weight chart -->
+  <div class="card chart-card">
+    <h2>True Weight over time</h2>
+    <div class="chart-wrap">
+      <canvas id="tw-chart"></canvas>
+    </div>
   </div>
 
   <!-- Today's logged weight -->
@@ -233,6 +253,7 @@
   const db  = getFirestore(app);
 
   let entries = []; // [{ date: "YYYY-MM-DD", weight: number }] sorted asc
+  let twChart = null;
 
   // ── Helpers ────────────────────────────────────────────────────────
 
@@ -274,6 +295,72 @@
     render();
   }
 
+  // ── Chart ──────────────────────────────────────────────────────────
+
+  function renderChart() {
+    if (entries.length < 2) return;
+
+    const labels  = entries.map(e => fmtDate(e.date));
+    const avgs    = entries.map((_, i) => parseFloat(rollingAvg(entries, i).toFixed(2)));
+    const minVal  = Math.min(...avgs);
+    const maxVal  = Math.max(...avgs);
+    const padding = Math.max((maxVal - minVal) * 0.4, 0.5);
+
+    const ctx = document.getElementById("tw-chart").getContext("2d");
+
+    if (twChart) {
+      twChart.data.labels            = labels;
+      twChart.data.datasets[0].data  = avgs;
+      twChart.options.scales.y.min   = parseFloat((minVal - padding).toFixed(1));
+      twChart.options.scales.y.max   = parseFloat((maxVal + padding).toFixed(1));
+      twChart.update();
+      return;
+    }
+
+    twChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          data: avgs,
+          borderColor: "#1a1a1a",
+          borderWidth: 2,
+          pointRadius: entries.length > 60 ? 0 : 3,
+          pointBackgroundColor: "#1a1a1a",
+          tension: 0.35,
+          fill: true,
+          backgroundColor: "rgba(26,26,26,0.06)"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          callbacks: { label: ctx => `${ctx.parsed.y.toFixed(1)} kg` }
+        }},
+        scales: {
+          x: {
+            ticks: {
+              font: { size: 11 },
+              color: "#bbb",
+              maxTicksLimit: 6,
+              maxRotation: 0
+            },
+            grid: { display: false },
+            border: { display: false }
+          },
+          y: {
+            min: parseFloat((minVal - padding).toFixed(1)),
+            max: parseFloat((maxVal + padding).toFixed(1)),
+            ticks: { font: { size: 11 }, color: "#bbb", count: 4 },
+            grid: { color: "#f0f0f0" },
+            border: { display: false }
+          }
+        }
+      }
+    });
+  }
+
   // ── Render ─────────────────────────────────────────────────────────
 
   function render() {
@@ -306,6 +393,9 @@
         trendEl.className   = "hero-trend";
       }
     }
+
+    // Chart
+    renderChart();
 
     // Today strip
     const todayEntry = entries.find(e => e.date === today);
