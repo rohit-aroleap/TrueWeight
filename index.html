@@ -22,6 +22,17 @@
     header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
     header p { color: #888; font-size: 0.88rem; margin-top: 0.3rem; }
     .version { font-size: 0.72rem; color: #ccc; margin-top: 0.2rem; }
+    .user-name {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #fff;
+      background: #1a1a1a;
+      border-radius: 20px;
+      padding: 0.2em 0.75em;
+      margin-top: 0.4rem;
+      letter-spacing: 0.02em;
+    }
 
     .card {
       background: white;
@@ -30,6 +41,34 @@
       margin-bottom: 1rem;
       box-shadow: 0 1px 4px rgba(0,0,0,0.07);
     }
+
+    /* ── Name picker screen ── */
+    #name-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 70vh;
+      text-align: center;
+    }
+    #name-screen h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.4rem; }
+    #name-screen p  { color: #888; font-size: 0.9rem; margin-bottom: 1.75rem; }
+    .name-form {
+      display: flex;
+      gap: 0.6rem;
+      width: 100%;
+      max-width: 320px;
+    }
+    .name-form input {
+      flex: 1;
+      padding: 0.65rem 0.9rem;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .name-form input:focus { border-color: #1a1a1a; }
 
     /* ── True Weight hero ── */
     .hero-card {
@@ -190,19 +229,32 @@
   </style>
 </head>
 <body>
-<div class="container">
+
+<!-- ── Name picker (shown when no ?user= param) ── -->
+<div id="name-screen" style="display:none;">
+  <h1>True Weight</h1>
+  <p>Enter your name to get your personal tracking link.</p>
+  <div class="name-form">
+    <input type="text" id="name-input" placeholder="Your name" maxlength="40" autocomplete="off" />
+    <button id="name-btn">Go</button>
+  </div>
+</div>
+
+<!-- ── Main app ── -->
+<div class="container" id="app" style="display:none;">
 
   <header>
     <h1>True Weight</h1>
     <p id="today-label"></p>
-    <p class="version">v1.003</p>
+    <span class="user-name" id="user-label"></span>
+    <p class="version">v1.004</p>
   </header>
 
   <!-- True Weight -->
   <div class="card hero-card">
     <div class="hero-label">True Weight &middot; 15-day average</div>
     <div>
-      <span class="hero-value" id="tw-value">—</span><span class="hero-unit" id="tw-unit">kg</span>
+      <span class="hero-value" id="tw-value">—</span><span class="hero-unit">kg</span>
     </div>
     <div class="hero-trend" id="tw-trend">No data yet</div>
   </div>
@@ -246,12 +298,11 @@
 </div>
 
 <script type="module">
-  import { initializeApp }        from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+  import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
   import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection, query, orderBy }
-                                  from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+                             from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-  // ── Firebase Config ────────────────────────────────────────────────
-  // Replace with your project's config from the Firebase console
+  // ── Firebase Config ──────────────────────────────────────────────────
   const firebaseConfig = {
     apiKey:            "AIzaSyCdJzTvNpebl7o4Y7MOk4f0qYPLPZC3670",
     authDomain:        "habit-wallet.firebaseapp.com",
@@ -260,18 +311,46 @@
     messagingSenderId: "744228746481",
     appId:             "1:744228746481:web:73b07e8486d711b6c3e550"
   };
-  // ──────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────
 
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
 
-  let entries = []; // [{ date: "YYYY-MM-DD", weight: number }] sorted asc
+  let entries = [];
   let twChart = null;
+  let USERNAME = "";
 
-  // ── Helpers ────────────────────────────────────────────────────────
+  // ── User resolution ──────────────────────────────────────────────────
+
+  function getUser() {
+    return new URLSearchParams(window.location.search).get("user")?.trim().toLowerCase() || "";
+  }
+
+  function weightsCol() {
+    return collection(db, "users", USERNAME, "weights");
+  }
+  function weightDoc(date) {
+    return doc(db, "users", USERNAME, "weights", date);
+  }
+
+  // ── Name picker screen ───────────────────────────────────────────────
+
+  function showNameScreen() {
+    document.getElementById("name-screen").style.display = "flex";
+    document.getElementById("app").style.display         = "none";
+    const go = () => {
+      const name = document.getElementById("name-input").value.trim().toLowerCase();
+      if (!name) return;
+      window.location.href = `?user=${encodeURIComponent(name)}`;
+    };
+    document.getElementById("name-btn").addEventListener("click", go);
+    document.getElementById("name-input").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────
 
   function todayISO() {
-    return new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+    return new Date().toLocaleDateString("en-CA");
   }
 
   function fmtDate(iso) {
@@ -284,27 +363,21 @@
     return slice.reduce((s, e) => s + e.weight, 0) / slice.length;
   }
 
-  // ── Firebase ───────────────────────────────────────────────────────
+  // ── Firebase ─────────────────────────────────────────────────────────
 
   async function loadEntries() {
     try {
-      const snap = await getDocs(query(collection(db, "weights"), orderBy("date", "asc")));
+      const snap = await getDocs(query(weightsCol(), orderBy("date", "asc")));
       entries = snap.docs.map(d => ({ date: d.id, weight: Number(d.data().weight) }));
     } catch (err) {
       console.error(err);
-      setStatus("Could not load data. Check your Firebase config.", "error");
+      setStatus("Could not load data.", "error");
     }
     render();
   }
 
-  async function deleteEntry(date) {
-    await deleteDoc(doc(db, "weights", date));
-    entries = entries.filter(e => e.date !== date);
-    render();
-  }
-
   async function saveEntry(date, weight) {
-    await setDoc(doc(db, "weights", date), { date, weight });
+    await setDoc(weightDoc(date), { date, weight });
     const i = entries.findIndex(e => e.date === date);
     if (i >= 0) entries[i].weight = weight;
     else {
@@ -314,7 +387,13 @@
     render();
   }
 
-  // ── Chart ──────────────────────────────────────────────────────────
+  async function deleteEntry(date) {
+    await deleteDoc(weightDoc(date));
+    entries = entries.filter(e => e.date !== date);
+    render();
+  }
+
+  // ── Chart ─────────────────────────────────────────────────────────────
 
   function renderChart() {
     if (entries.length < 2) return;
@@ -328,10 +407,10 @@
     const ctx = document.getElementById("tw-chart").getContext("2d");
 
     if (twChart) {
-      twChart.data.labels            = labels;
-      twChart.data.datasets[0].data  = avgs;
-      twChart.options.scales.y.min   = parseFloat((minVal - padding).toFixed(1));
-      twChart.options.scales.y.max   = parseFloat((maxVal + padding).toFixed(1));
+      twChart.data.labels           = labels;
+      twChart.data.datasets[0].data = avgs;
+      twChart.options.scales.y.min  = parseFloat((minVal - padding).toFixed(1));
+      twChart.options.scales.y.max  = parseFloat((maxVal + padding).toFixed(1));
       twChart.update();
       return;
     }
@@ -355,16 +434,11 @@
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: {
-          callbacks: { label: ctx => `${ctx.parsed.y.toFixed(1)} kg` }
+          callbacks: { label: c => `${c.parsed.y.toFixed(1)} kg` }
         }},
         scales: {
           x: {
-            ticks: {
-              font: { size: 11 },
-              color: "#bbb",
-              maxTicksLimit: 6,
-              maxRotation: 0
-            },
+            ticks: { font: { size: 11 }, color: "#bbb", maxTicksLimit: 6, maxRotation: 0 },
             grid: { display: false },
             border: { display: false }
           },
@@ -380,12 +454,12 @@
     });
   }
 
-  // ── Render ─────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────
 
   function render() {
     const today = todayISO();
 
-    // True Weight
+    // Hero
     const twEl    = document.getElementById("tw-value");
     const trendEl = document.getElementById("tw-trend");
     if (entries.length === 0) {
@@ -398,7 +472,7 @@
       twEl.textContent = current.toFixed(1);
 
       const d7 = new Date(); d7.setDate(d7.getDate() - 7);
-      const d7iso  = d7.toLocaleDateString("en-CA");
+      const d7iso   = d7.toLocaleDateString("en-CA");
       const prevIdx = [...entries].reverse().findIndex(e => e.date <= d7iso);
       if (prevIdx >= 0) {
         const realIdx = entries.length - 1 - prevIdx;
@@ -413,7 +487,6 @@
       }
     }
 
-    // Chart
     renderChart();
 
     // Today strip
@@ -463,7 +536,7 @@
     });
   }
 
-  // ── UI ─────────────────────────────────────────────────────────────
+  // ── UI helpers ────────────────────────────────────────────────────────
 
   function setStatus(msg, type = "") {
     const el = document.getElementById("status-msg");
@@ -471,35 +544,49 @@
     el.className   = "status " + type;
   }
 
-  // Seed UI defaults
-  document.getElementById("input-date").value = todayISO();
-  document.getElementById("today-label").textContent = new Date().toLocaleDateString("en-US", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric"
-  });
+  // ── Boot ──────────────────────────────────────────────────────────────
 
-  document.getElementById("log-btn").addEventListener("click", async () => {
-    const date   = document.getElementById("input-date").value;
-    const weight = parseFloat(document.getElementById("input-weight").value);
-    if (!date)                          { setStatus("Pick a date.", "error"); return; }
-    if (!weight || weight < 20 || weight > 500) { setStatus("Enter a valid weight (20–500 kg).", "error"); return; }
+  USERNAME = getUser();
 
-    const btn = document.getElementById("log-btn");
-    btn.disabled = true;
-    setStatus("Saving…");
-    try {
-      await saveEntry(date, weight);
-      setStatus("Saved!", "success");
-      document.getElementById("input-weight").value = "";
-      document.getElementById("input-date").value   = todayISO();
-    } catch (err) {
-      setStatus("Save failed. Check your Firebase config.", "error");
-      console.error(err);
-    } finally {
-      btn.disabled = false;
-    }
-  });
+  if (!USERNAME) {
+    showNameScreen();
+  } else {
+    document.getElementById("name-screen").style.display = "none";
+    document.getElementById("app").style.display         = "block";
 
-  loadEntries();
+    // Capitalise first letter for display only
+    document.getElementById("user-label").textContent =
+      USERNAME.charAt(0).toUpperCase() + USERNAME.slice(1);
+
+    document.getElementById("input-date").value = todayISO();
+    document.getElementById("today-label").textContent = new Date().toLocaleDateString("en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+
+    document.getElementById("log-btn").addEventListener("click", async () => {
+      const date   = document.getElementById("input-date").value;
+      const weight = parseFloat(document.getElementById("input-weight").value);
+      if (!date)                               { setStatus("Pick a date.", "error"); return; }
+      if (!weight || weight < 20 || weight > 500) { setStatus("Enter a valid weight (20–500 kg).", "error"); return; }
+
+      const btn = document.getElementById("log-btn");
+      btn.disabled = true;
+      setStatus("Saving…");
+      try {
+        await saveEntry(date, weight);
+        setStatus("Saved!", "success");
+        document.getElementById("input-weight").value = "";
+        document.getElementById("input-date").value   = todayISO();
+      } catch (err) {
+        setStatus("Save failed.", "error");
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadEntries();
+  }
 </script>
 </body>
 </html>
