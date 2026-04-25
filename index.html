@@ -183,6 +183,38 @@
     button:hover { opacity: 0.82; }
     button:disabled { opacity: 0.35; cursor: default; }
 
+    .full-btn { width: 100%; margin-top: 1rem; }
+
+    .meals-row { margin-top: 1rem; }
+    .meals-row > label {
+      display: block;
+      font-size: 0.78rem;
+      color: #888;
+      margin-bottom: 0.4rem;
+      font-weight: 500;
+    }
+    .seg {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .seg button {
+      flex: 1;
+      padding: 0.55rem 0;
+      background: white;
+      color: #555;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all 0.12s;
+    }
+    .seg button:hover { border-color: #999; opacity: 1; }
+    .seg button.active {
+      background: #1a1a1a;
+      color: white;
+      border-color: #1a1a1a;
+    }
+
     .status {
       font-size: 0.8rem;
       margin-top: 0.6rem;
@@ -286,7 +318,7 @@
     <h1>True Weight</h1>
     <p id="today-label"></p>
     <span class="user-name" id="user-label"></span>
-    <p class="version">v1.005</p>
+    <p class="version">v1.006</p>
   </header>
 
   <!-- True Weight -->
@@ -323,8 +355,20 @@
         <label>Weight (kg)</label>
         <input type="number" id="input-weight" step="0.1" min="20" max="500" placeholder="75.0" />
       </div>
-      <button id="log-btn">Log</button>
     </div>
+
+    <div class="meals-row">
+      <label>Meals today</label>
+      <div class="seg" id="meals-seg">
+        <button type="button" data-val="0">0</button>
+        <button type="button" data-val="1">1</button>
+        <button type="button" data-val="2">2</button>
+        <button type="button" data-val="3">3</button>
+        <button type="button" data-val="3+">3+</button>
+      </div>
+    </div>
+
+    <button id="log-btn" class="full-btn">Log</button>
     <div class="status" id="status-msg"></div>
   </div>
 
@@ -358,6 +402,7 @@
   let entries = [];
   let twChart = null;
   let USERNAME = "";
+  let selectedMeals = null;
 
   // ── User resolution ──────────────────────────────────────────────────
 
@@ -433,7 +478,10 @@
   async function loadEntries() {
     try {
       const snap = await getDocs(query(weightsCol(), orderBy("date", "asc")));
-      entries = snap.docs.map(d => ({ date: d.id, weight: Number(d.data().weight) }));
+      entries = snap.docs.map(d => {
+        const data = d.data();
+        return { date: d.id, weight: Number(data.weight), meals: data.meals ?? null };
+      });
     } catch (err) {
       console.error(err);
       setStatus("Could not load data.", "error");
@@ -441,13 +489,17 @@
     render();
   }
 
-  async function saveEntry(date, weight) {
-    await setDoc(weightDoc(date), { date, weight });
+  async function saveEntry(date, weight, meals) {
+    const payload = { date, weight };
+    if (meals !== null && meals !== undefined) payload.meals = meals;
+    await setDoc(weightDoc(date), payload, { merge: true });
     registerUser(); // fire-and-forget
     const i = entries.findIndex(e => e.date === date);
-    if (i >= 0) entries[i].weight = weight;
-    else {
-      entries.push({ date, weight });
+    if (i >= 0) {
+      entries[i].weight = weight;
+      if (meals !== null && meals !== undefined) entries[i].meals = meals;
+    } else {
+      entries.push({ date, weight, meals: meals ?? null });
       entries.sort((a, b) => a.date.localeCompare(b.date));
     }
     render();
@@ -577,17 +629,19 @@
       const gi  = entries.findIndex(x => x.date === e.date);
       const avg = rollingAvg(entries, gi);
       const isT = e.date === today;
+      const meals = (e.meals ?? null) === null ? "—" : e.meals;
       return `<tr class="${isT ? "today-row" : ""}">
         <td>${fmtDate(e.date)}${isT ? '<span class="today-tag">today</span>' : ""}</td>
         <td>${e.weight.toFixed(1)}</td>
         <td>${avg.toFixed(1)}</td>
+        <td>${meals}</td>
         <td><button class="del-btn" data-date="${e.date}" title="Delete">×</button></td>
       </tr>`;
     }).join("");
 
     container.innerHTML = `
       <table class="log-table">
-        <thead><tr><th>Date</th><th>Logged</th><th>Avg (15d)</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Logged</th><th>Avg (15d)</th><th>Meals</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
 
@@ -629,6 +683,16 @@
       weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
 
+    // Meals segmented control
+    const seg = document.getElementById("meals-seg");
+    seg.querySelectorAll("button").forEach(b => {
+      b.addEventListener("click", () => {
+        seg.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+        b.classList.add("active");
+        selectedMeals = b.dataset.val;
+      });
+    });
+
     document.getElementById("log-btn").addEventListener("click", async () => {
       const date   = document.getElementById("input-date").value;
       const weight = parseFloat(document.getElementById("input-weight").value);
@@ -639,10 +703,12 @@
       btn.disabled = true;
       setStatus("Saving…");
       try {
-        await saveEntry(date, weight);
+        await saveEntry(date, weight, selectedMeals);
         setStatus("Saved!", "success");
         document.getElementById("input-weight").value = "";
         document.getElementById("input-date").value   = todayISO();
+        seg.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+        selectedMeals = null;
       } catch (err) {
         setStatus("Save failed.", "error");
         console.error(err);
