@@ -70,6 +70,40 @@
     }
     .name-form input:focus { border-color: #1a1a1a; }
 
+    #user-list-wrap {
+      width: 100%;
+      max-width: 320px;
+      margin-top: 2.25rem;
+    }
+    .user-list-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #bbb;
+      font-weight: 600;
+      margin-bottom: 0.6rem;
+      text-align: left;
+    }
+    .user-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .user-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 0.95rem;
+      background: white;
+      border: 1.5px solid #eee;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #1a1a1a;
+      text-decoration: none;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.1s;
+    }
+    .user-pill:hover { border-color: #1a1a1a; transform: translateY(-1px); }
+    .user-pill .arrow { color: #bbb; font-size: 1.1rem; }
+    .user-list-empty { font-size: 0.85rem; color: #ccc; text-align: left; }
+
     /* ── True Weight hero ── */
     .hero-card {
       background: #1a1a1a;
@@ -238,6 +272,11 @@
     <input type="text" id="name-input" placeholder="Your name" maxlength="40" autocomplete="off" />
     <button id="name-btn">Go</button>
   </div>
+
+  <div id="user-list-wrap">
+    <div class="user-list-label">Existing accounts</div>
+    <div id="user-list" class="user-list"></div>
+  </div>
 </div>
 
 <!-- ── Main app ── -->
@@ -247,7 +286,7 @@
     <h1>True Weight</h1>
     <p id="today-label"></p>
     <span class="user-name" id="user-label"></span>
-    <p class="version">v1.004</p>
+    <p class="version">v1.005</p>
   </header>
 
   <!-- True Weight -->
@@ -335,7 +374,7 @@
 
   // ── Name picker screen ───────────────────────────────────────────────
 
-  function showNameScreen() {
+  async function showNameScreen() {
     document.getElementById("name-screen").style.display = "flex";
     document.getElementById("app").style.display         = "none";
     const go = () => {
@@ -345,6 +384,32 @@
     };
     document.getElementById("name-btn").addEventListener("click", go);
     document.getElementById("name-input").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+
+    // Populate existing users list
+    const listEl = document.getElementById("user-list");
+    try {
+      const snap = await getDocs(collection(db, "users"));
+      const names = snap.docs.map(d => d.id).sort();
+      if (names.length === 0) {
+        listEl.innerHTML = '<div class="user-list-empty">No accounts yet.</div>';
+        return;
+      }
+      listEl.innerHTML = names.map(n => {
+        const display = n.charAt(0).toUpperCase() + n.slice(1);
+        return `<a class="user-pill" href="?user=${encodeURIComponent(n)}">
+          <span>${display}</span><span class="arrow">→</span>
+        </a>`;
+      }).join("");
+    } catch (err) {
+      console.error(err);
+      listEl.innerHTML = '<div class="user-list-empty">Could not load accounts.</div>';
+    }
+  }
+
+  async function registerUser() {
+    try {
+      await setDoc(doc(db, "users", USERNAME), { name: USERNAME }, { merge: true });
+    } catch (err) { console.error("registerUser failed:", err); }
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────
@@ -378,6 +443,7 @@
 
   async function saveEntry(date, weight) {
     await setDoc(weightDoc(date), { date, weight });
+    registerUser(); // fire-and-forget
     const i = entries.findIndex(e => e.date === date);
     if (i >= 0) entries[i].weight = weight;
     else {
@@ -585,6 +651,7 @@
       }
     });
 
+    registerUser(); // ensure existing users (with prior data) show up in list
     loadEntries();
   }
 </script>
