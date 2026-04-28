@@ -8,38 +8,51 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html { font-size: 18px; }                /* bumps everything up vs. default 16px */
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #f5f5f0;
       color: #1a1a1a;
       min-height: 100vh;
-      padding: 2rem 1rem;
+      padding: 2rem 1rem 3rem;
+      line-height: 1.4;
     }
 
-    .container { max-width: 480px; margin: 0 auto; }
+    .container { max-width: 520px; margin: 0 auto; }
 
-    header { margin-bottom: 2rem; }
-    header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
-    header p { color: #888; font-size: 0.88rem; margin-top: 0.3rem; }
-    .version { font-size: 0.72rem; color: #ccc; margin-top: 0.2rem; }
+    /* ── Header ── */
+    header { margin-bottom: 1.75rem; }
+    header h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; }
+    header p  { color: #555; font-size: 1.05rem; margin-top: 0.4rem; font-weight: 500; }
+    .version  { font-size: 0.85rem; color: #aaa; margin-top: 0.4rem; }
     .user-name {
       display: inline-block;
-      font-size: 0.78rem;
-      font-weight: 600;
+      font-size: 1rem;
+      font-weight: 700;
       color: #fff;
       background: #1a1a1a;
-      border-radius: 20px;
-      padding: 0.2em 0.75em;
-      margin-top: 0.4rem;
-      letter-spacing: 0.02em;
+      border-radius: 999px;
+      padding: 0.35em 1em;
+      margin-top: 0.6rem;
     }
 
+    /* ── Cards ── */
     .card {
       background: white;
-      border-radius: 16px;
-      padding: 1.5rem;
+      border-radius: 18px;
+      padding: 1.6rem 1.5rem;
       margin-bottom: 1rem;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* ── Section labels (above tables/charts) ── */
+    .section-label {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #555;
+      margin-bottom: 1.1rem;
+      letter-spacing: 0.01em;
     }
 
     /* ── Name picker screen ── */
@@ -51,81 +64,81 @@
       min-height: 70vh;
       text-align: center;
     }
-    #name-screen h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.4rem; }
-    #name-screen p  { color: #888; font-size: 0.9rem; margin-bottom: 1.75rem; }
+    #name-screen h1 { font-size: 2.4rem; font-weight: 800; margin-bottom: 0.6rem; }
+    #name-screen p  { color: #555; font-size: 1.1rem; margin-bottom: 2rem; max-width: 360px; }
     .name-form {
       display: flex;
-      gap: 0.6rem;
+      flex-direction: column;
+      gap: 0.7rem;
       width: 100%;
-      max-width: 320px;
+      max-width: 360px;
     }
     .name-form input {
-      flex: 1;
-      padding: 0.65rem 0.9rem;
-      border: 1.5px solid #e5e5e5;
-      border-radius: 10px;
-      font-size: 1rem;
+      width: 100%;
+      padding: 0.95rem 1.1rem;
+      border: 2px solid #d0d0d0;
+      border-radius: 12px;
+      font-size: 1.15rem;
       outline: none;
       transition: border-color 0.15s;
     }
     .name-form input:focus { border-color: #1a1a1a; }
+    .name-form button { width: 100%; padding: 1rem; font-size: 1.15rem; }
 
     #user-list-wrap {
       width: 100%;
-      max-width: 320px;
-      margin-top: 2.25rem;
+      max-width: 360px;
+      margin-top: 2.5rem;
     }
     .user-list-label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #bbb;
-      font-weight: 600;
-      margin-bottom: 0.6rem;
+      font-size: 0.95rem;
+      color: #555;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
       text-align: left;
     }
-    .user-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .user-list { display: flex; flex-direction: column; gap: 0.55rem; }
     .user-pill {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.65rem 0.95rem;
+      padding: 1rem 1.2rem;
       background: white;
-      border: 1.5px solid #eee;
-      border-radius: 10px;
-      font-size: 0.95rem;
-      font-weight: 500;
+      border: 2px solid #e5e5e5;
+      border-radius: 12px;
+      font-size: 1.15rem;
+      font-weight: 600;
       color: #1a1a1a;
       text-decoration: none;
       cursor: pointer;
       transition: border-color 0.15s, transform 0.1s;
     }
-    .user-pill:hover { border-color: #1a1a1a; transform: translateY(-1px); }
-    .user-pill .arrow { color: #bbb; font-size: 1.1rem; }
-    .user-list-empty { font-size: 0.85rem; color: #ccc; text-align: left; }
+    .user-pill:hover, .user-pill:active { border-color: #1a1a1a; transform: translateY(-1px); }
+    .user-pill .arrow { color: #888; font-size: 1.4rem; }
+    .user-list-empty { font-size: 1rem; color: #888; text-align: left; }
 
     /* ── True Weight hero ── */
     .hero-card {
       background: #1a1a1a;
       color: white;
       text-align: center;
-      padding: 2.25rem 1.5rem;
+      padding: 2.5rem 1.5rem;
     }
     .hero-label {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      opacity: 0.55;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      opacity: 0.7;
     }
     .hero-value {
-      font-size: 4rem;
-      font-weight: 700;
+      font-size: 5rem;
+      font-weight: 800;
       letter-spacing: -0.04em;
-      line-height: 1.1;
-      margin: 0.4rem 0 0.1rem;
+      line-height: 1.05;
+      margin: 0.5rem 0 0.15rem;
     }
-    .hero-unit { font-size: 1.4rem; opacity: 0.6; margin-left: 0.2rem; }
-    .hero-trend { font-size: 0.82rem; opacity: 0.6; margin-top: 0.5rem; }
+    .hero-unit  { font-size: 1.8rem; opacity: 0.7; margin-left: 0.3rem; font-weight: 600; }
+    .hero-trend { font-size: 1.05rem; opacity: 0.75; margin-top: 0.7rem; font-weight: 600; }
     .hero-trend.up   { color: #ff8787; opacity: 1; }
     .hero-trend.down { color: #69db7c; opacity: 1; }
 
@@ -134,33 +147,33 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.88rem;
+      font-size: 1.1rem;
     }
-    .today-strip .label { color: #999; }
-    .today-strip .value { font-weight: 600; font-size: 1rem; }
-    .today-strip .not-yet { color: #bbb; font-style: italic; }
+    .today-strip .label   { color: #555; font-weight: 500; }
+    .today-strip .value   { font-weight: 700; font-size: 1.25rem; color: #1a1a1a; }
+    .today-strip .not-yet { color: #888; font-style: italic; }
 
     /* ── Log form ── */
     .input-row {
       display: flex;
-      gap: 0.75rem;
+      gap: 0.85rem;
       align-items: flex-end;
     }
     .input-group { flex: 1; }
     .input-group label {
       display: block;
-      font-size: 0.78rem;
-      color: #888;
-      margin-bottom: 0.4rem;
-      font-weight: 500;
+      font-size: 1rem;
+      color: #444;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
     }
     input[type="number"],
     input[type="date"] {
       width: 100%;
-      padding: 0.65rem 0.85rem;
-      border: 1.5px solid #e5e5e5;
-      border-radius: 10px;
-      font-size: 1rem;
+      padding: 0.95rem 1rem;
+      border: 2px solid #d0d0d0;
+      border-radius: 12px;
+      font-size: 1.2rem;
       outline: none;
       transition: border-color 0.15s;
       background: white;
@@ -169,46 +182,49 @@
     input:focus { border-color: #1a1a1a; }
 
     button {
-      padding: 0.65rem 1.2rem;
+      padding: 1rem 1.4rem;
       background: #1a1a1a;
       color: white;
       border: none;
-      border-radius: 10px;
-      font-size: 0.95rem;
-      font-weight: 600;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
       transition: opacity 0.15s;
+      min-height: 52px;
     }
-    button:hover { opacity: 0.82; }
-    button:disabled { opacity: 0.35; cursor: default; }
+    button:hover  { opacity: 0.85; }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.4; cursor: default; }
 
-    .full-btn { width: 100%; margin-top: 1rem; }
+    .full-btn { width: 100%; margin-top: 1.25rem; padding: 1.1rem; font-size: 1.2rem; }
 
-    .meals-row { margin-top: 1rem; }
+    .meals-row { margin-top: 1.25rem; }
     .meals-row > label {
       display: block;
-      font-size: 0.78rem;
-      color: #888;
-      margin-bottom: 0.4rem;
-      font-weight: 500;
+      font-size: 1rem;
+      color: #444;
+      margin-bottom: 0.6rem;
+      font-weight: 600;
     }
     .seg {
       display: flex;
-      gap: 0.4rem;
+      gap: 0.5rem;
     }
     .seg button {
       flex: 1;
-      padding: 0.55rem 0;
+      padding: 0.95rem 0;
       background: white;
-      color: #555;
-      border: 1.5px solid #e5e5e5;
-      border-radius: 10px;
-      font-size: 0.95rem;
-      font-weight: 600;
+      color: #444;
+      border: 2px solid #d0d0d0;
+      border-radius: 12px;
+      font-size: 1.15rem;
+      font-weight: 700;
       transition: all 0.12s;
+      min-height: 52px;
     }
-    .seg button:hover { border-color: #999; opacity: 1; }
+    .seg button:hover { border-color: #1a1a1a; opacity: 1; }
     .seg button.active {
       background: #1a1a1a;
       color: white;
@@ -216,82 +232,69 @@
     }
 
     .status {
-      font-size: 0.8rem;
-      margin-top: 0.6rem;
-      min-height: 1.2em;
-      color: #999;
+      font-size: 1rem;
+      margin-top: 0.85rem;
+      min-height: 1.4em;
+      color: #555;
+      font-weight: 500;
     }
-    .status.success { color: #2f9e44; }
+    .status.success { color: #2b8a3e; }
     .status.error   { color: #c92a2a; }
 
     /* ── Log table ── */
-    .log-card h2 {
-      font-size: 0.72rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #bbb;
-      margin-bottom: 1rem;
-    }
     .log-table { width: 100%; border-collapse: collapse; }
     .log-table th {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: #ccc;
-      font-weight: 600;
+      font-size: 0.9rem;
+      color: #555;
+      font-weight: 700;
       text-align: left;
-      padding-bottom: 0.7rem;
+      padding-bottom: 0.85rem;
+      border-bottom: 2px solid #e5e5e5;
     }
     .log-table td {
-      padding: 0.55rem 0;
-      font-size: 0.88rem;
-      border-top: 1px solid #f2f2f2;
-      color: #444;
+      padding: 0.95rem 0.3rem 0.95rem 0;
+      font-size: 1.1rem;
+      border-top: 1px solid #eee;
+      color: #1a1a1a;
     }
     .log-table th:not(:first-child),
-    .log-table td:not(:first-child) { text-align: right; }
-    .log-table .today-row td { font-weight: 700; color: #1a1a1a; }
+    .log-table td:not(:first-child) { text-align: right; padding-left: 0.3rem; }
+    .log-table .today-row td { font-weight: 800; }
     .today-tag {
-      font-size: 0.68rem;
-      background: #f0f0f0;
-      color: #999;
-      border-radius: 4px;
-      padding: 0.1em 0.4em;
-      margin-left: 0.4rem;
-      font-weight: 500;
+      display: inline-block;
+      font-size: 0.85rem;
+      background: #fff3bf;
+      color: #5c4500;
+      border-radius: 6px;
+      padding: 0.15em 0.55em;
+      margin-left: 0.5rem;
+      font-weight: 700;
     }
     .del-btn {
-      background: none;
+      background: #f7f7f5;
       border: none;
-      color: #ddd;
-      font-size: 1.1rem;
+      color: #888;
+      font-size: 1.4rem;
       line-height: 1;
-      padding: 0.1rem 0.3rem;
+      padding: 0.4rem 0.7rem;
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 8px;
+      min-height: 38px;
+      min-width: 38px;
       transition: color 0.15s, background 0.15s;
     }
-    .del-btn:hover { color: #c92a2a; background: #fff0f0; }
+    .del-btn:hover { color: #c92a2a; background: #ffe3e3; }
 
     .empty-state {
       text-align: center;
-      color: #ccc;
-      font-size: 0.88rem;
+      color: #888;
+      font-size: 1.05rem;
       padding: 2rem 0;
     }
-    .loading { text-align: center; color: #ccc; padding: 2rem; font-size: 0.88rem; }
+    .loading { text-align: center; color: #888; padding: 2rem; font-size: 1.05rem; }
 
     /* ── Chart ── */
-    .chart-card h2 {
-      font-size: 0.72rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #bbb;
-      margin-bottom: 1.25rem;
-    }
-    .chart-wrap { position: relative; height: 180px; }
+    .chart-wrap { position: relative; height: 220px; }
   </style>
 </head>
 <body>
@@ -299,10 +302,10 @@
 <!-- ── Name picker (shown when no ?user= param) ── -->
 <div id="name-screen" style="display:none;">
   <h1>True Weight</h1>
-  <p>Enter your name to get your personal tracking link.</p>
+  <p>Type your name to start, or tap an existing account below.</p>
   <div class="name-form">
     <input type="text" id="name-input" placeholder="Your name" maxlength="40" autocomplete="off" />
-    <button id="name-btn">Go</button>
+    <button id="name-btn">Continue</button>
   </div>
 
   <div id="user-list-wrap">
@@ -318,7 +321,7 @@
     <h1>True Weight</h1>
     <p id="today-label"></p>
     <span class="user-name" id="user-label"></span>
-    <p class="version">v1.007</p>
+    <p class="version">v1.008</p>
   </header>
 
   <!-- True Weight -->
@@ -332,7 +335,7 @@
 
   <!-- True Weight chart -->
   <div class="card chart-card">
-    <h2>True Weight over time</h2>
+    <div class="section-label">True Weight over time</div>
     <div class="chart-wrap">
       <canvas id="tw-chart"></canvas>
     </div>
@@ -374,7 +377,7 @@
 
   <!-- Entry log -->
   <div class="card log-card">
-    <h2>Recent Entries</h2>
+    <div class="section-label">Recent Entries</div>
     <div id="log-content" class="loading">Loading…</div>
   </div>
 
@@ -578,15 +581,15 @@
         }},
         scales: {
           x: {
-            ticks: { font: { size: 11 }, color: "#bbb", maxTicksLimit: 6, maxRotation: 0 },
+            ticks: { font: { size: 13 }, color: "#666", maxTicksLimit: 6, maxRotation: 0 },
             grid: { display: false },
             border: { display: false }
           },
           y: {
             min: parseFloat((minVal - padding).toFixed(1)),
             max: parseFloat((maxVal + padding).toFixed(1)),
-            ticks: { font: { size: 11 }, color: "#bbb", count: 4 },
-            grid: { color: "#f0f0f0" },
+            ticks: { font: { size: 13 }, color: "#666", count: 4 },
+            grid: { color: "#ececec" },
             border: { display: false }
           }
         }
@@ -623,7 +626,8 @@
         if (prev !== null) {
           const diff = current - prev;
           const sign = diff >= 0 ? "+" : "";
-          trendEl.textContent = `${sign}${diff.toFixed(1)} kg vs 7 days ago`;
+          const arrow = diff > 0.05 ? "▲ " : diff < -0.05 ? "▼ " : "";
+          trendEl.textContent = `${arrow}${sign}${diff.toFixed(1)} kg vs 7 days ago`;
           trendEl.className   = "hero-trend " + (diff > 0.05 ? "up" : diff < -0.05 ? "down" : "");
         } else {
           const wCount = entries.filter(e => e.weight != null).length;
