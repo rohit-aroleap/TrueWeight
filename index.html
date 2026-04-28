@@ -318,7 +318,7 @@
     <h1>True Weight</h1>
     <p id="today-label"></p>
     <span class="user-name" id="user-label"></span>
-    <p class="version">v1.006</p>
+    <p class="version">v1.007</p>
   </header>
 
   <!-- True Weight -->
@@ -469,8 +469,15 @@
   }
 
   function rollingAvg(arr, idx, win = 15) {
-    const slice = arr.slice(Math.max(0, idx - win + 1), idx + 1);
-    return slice.reduce((s, e) => s + e.weight, 0) / slice.length;
+    // Build a window of the most recent `win` entries that have a weight, up to idx
+    const out = [];
+    for (let i = idx; i >= 0 && out.length < win; i--) {
+      if (arr[i].weight !== null && arr[i].weight !== undefined && !Number.isNaN(arr[i].weight)) {
+        out.push(arr[i].weight);
+      }
+    }
+    if (out.length === 0) return null;
+    return out.reduce((s, w) => s + w, 0) / out.length;
   }
 
   // ── Firebase ─────────────────────────────────────────────────────────
@@ -490,16 +497,27 @@
   }
 
   async function saveEntry(date, weight, meals) {
-    const payload = { date, weight };
-    if (meals !== null && meals !== undefined) payload.meals = meals;
+    const hasWeight = weight !== null && weight !== undefined && !Number.isNaN(weight);
+    const hasMeals  = meals  !== null && meals  !== undefined;
+    if (!hasWeight && !hasMeals) return;
+
+    const payload = { date };
+    if (hasWeight) payload.weight = weight;
+    if (hasMeals)  payload.meals  = meals;
+
     await setDoc(weightDoc(date), payload, { merge: true });
     registerUser(); // fire-and-forget
+
     const i = entries.findIndex(e => e.date === date);
     if (i >= 0) {
-      entries[i].weight = weight;
-      if (meals !== null && meals !== undefined) entries[i].meals = meals;
+      if (hasWeight) entries[i].weight = weight;
+      if (hasMeals)  entries[i].meals  = meals;
     } else {
-      entries.push({ date, weight, meals: meals ?? null });
+      entries.push({
+        date,
+        weight: hasWeight ? weight : null,
+        meals:  hasMeals  ? meals  : null
+      });
       entries.sort((a, b) => a.date.localeCompare(b.date));
     }
     render();
@@ -514,10 +532,14 @@
   // ── Chart ─────────────────────────────────────────────────────────────
 
   function renderChart() {
-    if (entries.length < 2) return;
+    // Only chart days that have a weight; rolling avg is computed against full series
+    const points = entries
+      .map((e, i) => ({ e, avg: rollingAvg(entries, i) }))
+      .filter(p => p.e.weight != null && p.avg !== null);
+    if (points.length < 2) return;
 
-    const labels  = entries.map(e => fmtDate(e.date));
-    const avgs    = entries.map((_, i) => parseFloat(rollingAvg(entries, i).toFixed(2)));
+    const labels  = points.map(p => fmtDate(p.e.date));
+    const avgs    = points.map(p => parseFloat(p.avg.toFixed(2)));
     const minVal  = Math.min(...avgs);
     const maxVal  = Math.max(...avgs);
     const padding = Math.max((maxVal - minVal) * 0.4, 0.5);
@@ -587,21 +609,27 @@
     } else {
       const last    = entries.length - 1;
       const current = rollingAvg(entries, last);
-      twEl.textContent = current.toFixed(1);
-
-      const d7 = new Date(); d7.setDate(d7.getDate() - 7);
-      const d7iso   = d7.toLocaleDateString("en-CA");
-      const prevIdx = [...entries].reverse().findIndex(e => e.date <= d7iso);
-      if (prevIdx >= 0) {
-        const realIdx = entries.length - 1 - prevIdx;
-        const prev    = rollingAvg(entries, realIdx);
-        const diff    = current - prev;
-        const sign    = diff >= 0 ? "+" : "";
-        trendEl.textContent = `${sign}${diff.toFixed(1)} kg vs 7 days ago`;
-        trendEl.className   = "hero-trend " + (diff > 0.05 ? "up" : diff < -0.05 ? "down" : "");
-      } else {
-        trendEl.textContent = `Based on ${Math.min(entries.length, 15)} entr${entries.length === 1 ? "y" : "ies"}`;
+      if (current === null) {
+        twEl.textContent    = "—";
+        trendEl.textContent = "Log a weight to see your True Weight";
         trendEl.className   = "hero-trend";
+      } else {
+        twEl.textContent = current.toFixed(1);
+
+        const d7 = new Date(); d7.setDate(d7.getDate() - 7);
+        const d7iso   = d7.toLocaleDateString("en-CA");
+        const prevIdx = [...entries].reverse().findIndex(e => e.date <= d7iso);
+        const prev    = prevIdx >= 0 ? rollingAvg(entries, entries.length - 1 - prevIdx) : null;
+        if (prev !== null) {
+          const diff = current - prev;
+          const sign = diff >= 0 ? "+" : "";
+          trendEl.textContent = `${sign}${diff.toFixed(1)} kg vs 7 days ago`;
+          trendEl.className   = "hero-trend " + (diff > 0.05 ? "up" : diff < -0.05 ? "down" : "");
+        } else {
+          const wCount = entries.filter(e => e.weight != null).length;
+          trendEl.textContent = `Based on ${Math.min(wCount, 15)} entr${wCount === 1 ? "y" : "ies"}`;
+          trendEl.className   = "hero-trend";
+        }
       }
     }
 
@@ -610,7 +638,7 @@
     // Today strip
     const todayEntry = entries.find(e => e.date === today);
     const twSpan     = document.getElementById("today-weight");
-    if (todayEntry) {
+    if (todayEntry && todayEntry.weight != null) {
       twSpan.textContent = `${todayEntry.weight.toFixed(1)} kg`;
       twSpan.className   = "value";
     } else {
@@ -629,11 +657,13 @@
       const gi  = entries.findIndex(x => x.date === e.date);
       const avg = rollingAvg(entries, gi);
       const isT = e.date === today;
-      const meals = (e.meals ?? null) === null ? "—" : e.meals;
+      const meals  = (e.meals ?? null) === null ? "—" : e.meals;
+      const wStr   = e.weight != null ? e.weight.toFixed(1) : "—";
+      const avgStr = avg !== null ? avg.toFixed(1) : "—";
       return `<tr class="${isT ? "today-row" : ""}">
         <td>${fmtDate(e.date)}${isT ? '<span class="today-tag">today</span>' : ""}</td>
-        <td>${e.weight.toFixed(1)}</td>
-        <td>${avg.toFixed(1)}</td>
+        <td>${wStr}</td>
+        <td>${avgStr}</td>
         <td>${meals}</td>
         <td><button class="del-btn" data-date="${e.date}" title="Delete">×</button></td>
       </tr>`;
@@ -694,16 +724,21 @@
     });
 
     document.getElementById("log-btn").addEventListener("click", async () => {
-      const date   = document.getElementById("input-date").value;
-      const weight = parseFloat(document.getElementById("input-weight").value);
-      if (!date)                               { setStatus("Pick a date.", "error"); return; }
-      if (!weight || weight < 20 || weight > 500) { setStatus("Enter a valid weight (20–500 kg).", "error"); return; }
+      const date     = document.getElementById("input-date").value;
+      const wRaw     = document.getElementById("input-weight").value.trim();
+      const weight   = wRaw === "" ? null : parseFloat(wRaw);
+      const hasW     = weight !== null && !Number.isNaN(weight);
+      const hasM     = selectedMeals !== null;
+
+      if (!date)                                       { setStatus("Pick a date.", "error"); return; }
+      if (!hasW && !hasM)                              { setStatus("Enter a weight or pick meals.", "error"); return; }
+      if (hasW && (weight < 20 || weight > 500))       { setStatus("Enter a valid weight (20–500 kg).", "error"); return; }
 
       const btn = document.getElementById("log-btn");
       btn.disabled = true;
       setStatus("Saving…");
       try {
-        await saveEntry(date, weight, selectedMeals);
+        await saveEntry(date, hasW ? weight : null, hasM ? selectedMeals : null);
         setStatus("Saved!", "success");
         document.getElementById("input-weight").value = "";
         document.getElementById("input-date").value   = todayISO();
